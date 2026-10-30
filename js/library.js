@@ -1,6 +1,6 @@
 // Lógica de negócio do acervo (sem DOM). Funciona no navegador e no Node (testes).
 export const SITUACOES = { DISPONIVEL: 'disponivel', EMPRESTADO: 'emprestado' };
-const CHAVE = 'biblioteca:livros';
+export const CHAVE_ACERVO = 'biblioteca:livros';
 
 export function validarLivro(d, anoAtual = new Date().getFullYear()) {
   const erros = [];
@@ -25,7 +25,7 @@ export function validarLivro(d, anoAtual = new Date().getFullYear()) {
 
 const novoId = () => globalThis.crypto?.randomUUID?.() ?? `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
-export function criarAcervo(storage, chave = CHAVE) {
+export function criarAcervo(storage, chave = CHAVE_ACERVO) {
   let avisoArmazenamento = '';
   const preservarCorrompido = (valor) => {
     const base = `${chave}:backup-corrompido`;

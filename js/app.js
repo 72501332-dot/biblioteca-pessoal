@@ -1,4 +1,4 @@
-import { criarAcervo, SITUACOES } from './library.js';
+import { criarAcervo, SITUACOES, CHAVE_ACERVO } from './library.js';
 
 const acervo = criarAcervo(window.localStorage);
 const $ = (s) => document.querySelector(s);
@@ -104,4 +104,7 @@ form.addEventListener('submit', (e) => {
 $('#cancelar').addEventListener('click', limpar);
 $('#busca').addEventListener('input', render);
 $('#filtro').addEventListener('change', render);
+window.addEventListener('storage', (event) => {
+  if (event.storageArea === window.localStorage && (event.key === null || event.key === CHAVE_ACERVO)) render();
+});
 render();
