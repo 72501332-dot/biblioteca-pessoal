@@ -1,6 +1,6 @@
 # Meu Acervo — Biblioteca pessoal
 
-> **Sistema publicado:** _cole aqui o link do GitHub Pages (ex.: https://SEU-USUARIO.github.io/biblioteca-pessoal/)_
+> **Sistema publicado:** https://72501332-dot.github.io/biblioteca-pessoal/
 
 Aplicação web para cadastrar os livros que você tem, pesquisar, editar, excluir e registrar empréstimos e devoluções.
 
@@ -13,7 +13,7 @@ Aplicação web para cadastrar os livros que você tem, pesquisar, editar, exclu
 
 ## Tecnologias
 HTML, CSS e JavaScript puro (módulos ES). Sem framework e sem back-end. Testes com o executor nativo do Node.js (`node:test`).
-Ferramenta de IA utilizada: _informe aqui (ex.: GitHub Copilot Free)_.
+Ferramenta de IA utilizada:Ferramenta de IA utilizada: Claude (Anthropic), pelo site claude.ai, para planejar e gerar o código do sistemas.
 
 ## Persistência
 Os dados ficam no `localStorage` do navegador. Escolha feita porque a atividade pede só HTML/JS e porque não exige conta nem servidor. **Limitações:** os dados são por navegador/dispositivo e somem se o usuário limpar os dados do site.
