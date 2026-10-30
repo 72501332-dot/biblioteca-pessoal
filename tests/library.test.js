@@ -77,3 +77,32 @@ describe('busca e persistência', () => {
     assert.deepEqual(criarAcervo(s).listar(), []);
   });
 });
+
+describe('recuperação de armazenamento', () => {
+  test('preserva JSON corrompido ou que não seja lista e expõe aviso', () => {
+    for (const original of ['{quebrado', '{"livro":1}']) {
+      const s = memoria();
+      s.setItem('biblioteca:livros', original);
+      const a = criarAcervo(s);
+
+      assert.deepEqual(a.listar(), []);
+      assert.match(a.obterAvisoArmazenamento(), /cópia foi salva/);
+      a.adicionar(livro);
+      assert.equal(s.getItem('biblioteca:livros:backup-corrompido'), original);
+    }
+  });
+
+  test('interrompe a gravação se não conseguir preservar os dados corrompidos', () => {
+    const original = '{quebrado';
+    const s = {
+      getItem: (chave) => chave === 'biblioteca:livros' ? original : null,
+      setItem: (chave) => {
+        if (chave === 'biblioteca:livros:backup-corrompido') throw new Error('Armazenamento cheio.');
+      },
+    };
+    const a = criarAcervo(s);
+
+    assert.throws(() => a.adicionar(livro), /gravação foi cancelada/);
+    assert.equal(s.getItem('biblioteca:livros'), original);
+  });
+});

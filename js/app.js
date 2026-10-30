@@ -4,6 +4,7 @@ const acervo = criarAcervo(window.localStorage);
 const $ = (s) => document.querySelector(s);
 const form = $('#form-livro'), lista = $('#lista'), aviso = $('#aviso');
 let editandoId = null;
+let avisoInicialExibido = false;
 
 function mostrarAviso(texto, tipo = 'ok') {
   aviso.textContent = texto;
@@ -28,7 +29,21 @@ function botao(texto, fn, classe = '') {
 }
 
 function render() {
-  const livros = acervo.listar({ busca: $('#busca').value, situacao: $('#filtro').value });
+  let livros;
+  try {
+    livros = acervo.listar({ busca: $('#busca').value, situacao: $('#filtro').value });
+  } catch (e) {
+    lista.replaceChildren();
+    $('#vazio').hidden = true;
+    if (!avisoInicialExibido) mostrarAviso(e instanceof Error ? e.message : String(e), 'erro');
+    avisoInicialExibido = true;
+    return;
+  }
+  if (!avisoInicialExibido) {
+    const aviso = acervo.obterAvisoArmazenamento();
+    if (aviso) mostrarAviso(aviso, 'erro');
+    avisoInicialExibido = true;
+  }
   lista.replaceChildren();
   $('#vazio').hidden = livros.length > 0;
   for (const l of livros) {
@@ -40,14 +55,14 @@ function render() {
     info.append(el('span', emp ? `Emprestado a ${l.emprestadoPara} em ${l.dataEmprestimo.split('-').reverse().join('/')}` : 'Disponível', 'selo'));
     const acoes = el('div', null, 'acoes');
     acoes.append(
-      emp ? botao('Devolver', () => acao(acervo.devolver(l.id), 'Livro devolvido.'))
+      emp ? botao('Devolver', () => executarAcao(() => acervo.devolver(l.id), 'Livro devolvido.'))
           : botao('Emprestar', () => {
               const nome = window.prompt('Emprestar para quem?');
-              if (nome !== null) acao(acervo.emprestar(l.id, nome), 'Empréstimo registrado.');
+              if (nome !== null) executarAcao(() => acervo.emprestar(l.id, nome), 'Empréstimo registrado.');
             }),
       botao('Editar', () => editar(l), 'sec'),
       botao('Excluir', () => {
-        if (window.confirm(`Excluir "${l.titulo}"?`)) acao(acervo.remover(l.id), 'Livro excluído.');
+        if (window.confirm(`Excluir "${l.titulo}"?`)) executarAcao(() => acervo.remover(l.id), 'Livro excluído.');
       }, 'perigo'),
     );
     li.append(info, acoes);
@@ -55,6 +70,10 @@ function render() {
   }
 }
 function acao(r, msg) { r.ok ? (mostrarAviso(msg), render()) : erro(r); }
+function executarAcao(operacao, msg) {
+  try { acao(operacao(), msg); }
+  catch (e) { mostrarAviso(e instanceof Error ? e.message : String(e), 'erro'); }
+}
 
 function editar(l) {
   editandoId = l.id;
@@ -73,10 +92,14 @@ function limpar() {
 form.addEventListener('submit', (e) => {
   e.preventDefault();
   const dados = Object.fromEntries(new FormData(form));
-  const r = editandoId ? acervo.atualizar(editandoId, dados) : acervo.adicionar(dados);
-  if (!r.ok) return erro(r);
-  mostrarAviso(editandoId ? 'Livro atualizado.' : 'Livro cadastrado.');
-  limpar(); render();
+  try {
+    const r = editandoId ? acervo.atualizar(editandoId, dados) : acervo.adicionar(dados);
+    if (!r.ok) return erro(r);
+    mostrarAviso(editandoId ? 'Livro atualizado.' : 'Livro cadastrado.');
+    limpar(); render();
+  } catch (e) {
+    mostrarAviso(e instanceof Error ? e.message : String(e), 'erro');
+  }
 });
 $('#cancelar').addEventListener('click', limpar);
 $('#busca').addEventListener('input', render);
