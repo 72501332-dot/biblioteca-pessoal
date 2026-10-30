@@ -12,7 +12,7 @@ Aplicação web para cadastrar os livros que você tem, pesquisar, editar, exclu
 - Mensagens de sucesso e de erro; layout responsivo (computador e celular).
 
 ## Tecnologias
-Ferramenta de IA utilizada:Ferramenta de IA utilizada: Claude (Anthropic), pelo site claude.ai, para planejar e gerar o código do sistemas.
+Ferramenta de IA utilizada: Claude (Anthropic), pelo site claude.ai, para planejar e gerar o código do sistemas.
 
 ## Persistência
 Os dados ficam no `localStorage` do navegador. Escolha feita porque a atividade pede só HTML/JS e porque não exige conta nem servidor. **Limitações:** os dados são por navegador/dispositivo e somem se o usuário limpar os dados do site.
