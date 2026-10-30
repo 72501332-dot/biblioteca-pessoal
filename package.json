@@ -1,0 +1,11 @@
+{
+  "name": "biblioteca-pessoal",
+  "version": "1.0.0",
+  "description": "Acervo pessoal de livros em HTML/CSS/JS puro",
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "start": "npx serve ."
+  },
+  "license": "MIT"
+}
