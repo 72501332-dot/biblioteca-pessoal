@@ -12,7 +12,6 @@ Aplicação web para cadastrar os livros que você tem, pesquisar, editar, exclu
 - Mensagens de sucesso e de erro; layout responsivo (computador e celular).
 
 ## Tecnologias
-HTML, CSS e JavaScript puro (módulos ES). Sem framework e sem back-end. Testes com o executor nativo do Node.js (`node:test`).
 Ferramenta de IA utilizada:Ferramenta de IA utilizada: Claude (Anthropic), pelo site claude.ai, para planejar e gerar o código do sistemas.
 
 ## Persistência
