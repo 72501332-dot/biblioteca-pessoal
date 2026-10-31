@@ -55,7 +55,7 @@ js/library-storage.js    leitura, gravação e backup de dados corrompidos
 tests/library.test.js    testes automatizados
 AUDITORIA.md             relatório do Prompt 4
 SECURITY-REVIEW.md       relatório do Prompt 1
-evidencias/              capturas de tela
+
 .env.example             sem variáveis: o projeto não usa segredos
 ```
 
