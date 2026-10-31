@@ -1,3 +1,5 @@
+import { criarPersistenciaAcervo } from './library-storage.js';
+
 // Lógica de negócio do acervo (sem DOM). Funciona no navegador e no Node (testes).
 export const SITUACOES = { DISPONIVEL: 'disponivel', EMPRESTADO: 'emprestado' };
 export const CHAVE_ACERVO = 'biblioteca:livros';
@@ -26,38 +28,12 @@ export function validarLivro(d, anoAtual = new Date().getFullYear()) {
 const novoId = () => globalThis.crypto?.randomUUID?.() ?? `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
 export function criarAcervo(storage, chave = CHAVE_ACERVO) {
-  let avisoArmazenamento = '';
-  const preservarCorrompido = (valor) => {
-    const base = `${chave}:backup-corrompido`;
-    for (let indice = 0; ; indice++) {
-      const chaveBackup = indice === 0 ? base : `${base}:${indice}`;
-      const existente = storage.getItem(chaveBackup);
-      if (existente === valor) return chaveBackup;
-      if (existente === null) {
-        try {
-          storage.setItem(chaveBackup, valor);
-        } catch {
-          throw new Error('Não foi possível salvar uma cópia dos dados corrompidos; a gravação foi cancelada.');
-        }
-        return chaveBackup;
-      }
-    }
-  };
-  const carregar = () => {
-    const bruto = storage.getItem(chave);
-    if (bruto === null) return [];
-    let v;
-    try { v = JSON.parse(bruto); } catch {}
-    if (Array.isArray(v)) return v;
-    const chaveBackup = preservarCorrompido(bruto);
-    avisoArmazenamento = `Os dados do acervo estavam corrompidos. Uma cópia foi salva em "${chaveBackup}".`;
-    return [];
-  };
-  const salvar = (livros) => storage.setItem(chave, JSON.stringify(livros));
+  const persistencia = criarPersistenciaAcervo(storage, chave);
+  const { carregar, salvar } = persistencia;
   const falha = (...erros) => ({ ok: false, erros });
 
   return {
-    obterAvisoArmazenamento: () => avisoArmazenamento,
+    obterAvisoArmazenamento: persistencia.obterAvisoArmazenamento,
     listar({ busca = '', situacao = '' } = {}) {
       const q = busca.trim().toLowerCase();
       return carregar()
