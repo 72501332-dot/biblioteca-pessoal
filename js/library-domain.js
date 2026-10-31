@@ -20,3 +20,18 @@ export function validarLivro(d, anoAtual = new Date().getFullYear()) {
   }
   return { ok: erros.length === 0, erros, dados: { titulo, autor, categoria, ano } };
 }
+
+export function emprestarLivro(livro, pessoa, hoje) {
+  const nome = String(pessoa ?? '').trim();
+  if (!nome) return { ok: false, erros: ['Informe para quem o livro foi emprestado.'] };
+  if (nome.length > 80) return { ok: false, erros: ['O nome deve ter até 80 caracteres.'] };
+  if (livro.situacao === SITUACOES.EMPRESTADO) return { ok: false, erros: ['Este livro já está emprestado.'] };
+  Object.assign(livro, { situacao: SITUACOES.EMPRESTADO, emprestadoPara: nome, dataEmprestimo: hoje.toISOString().slice(0, 10) });
+  return { ok: true, livro };
+}
+
+export function devolverLivro(livro) {
+  if (livro.situacao !== SITUACOES.EMPRESTADO) return { ok: false, erros: ['Este livro não está emprestado.'] };
+  Object.assign(livro, { situacao: SITUACOES.DISPONIVEL, emprestadoPara: null, dataEmprestimo: null });
+  return { ok: true, livro };
+}

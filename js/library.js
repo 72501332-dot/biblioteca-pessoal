@@ -1,5 +1,5 @@
 import { criarPersistenciaAcervo } from './library-storage.js';
-import { SITUACOES, validarLivro } from './library-domain.js';
+import { SITUACOES, validarLivro, emprestarLivro, devolverLivro } from './library-domain.js';
 
 // Lógica de negócio do acervo (sem DOM). Funciona no navegador e no Node (testes).
 export { SITUACOES, validarLivro } from './library-domain.js';
@@ -49,22 +49,19 @@ export function criarAcervo(storage, chave = CHAVE_ACERVO) {
       const livros = carregar();
       const livro = livros.find((l) => l.id === id);
       if (!livro) return falha('Livro não encontrado.');
-      const nome = String(pessoa ?? '').trim();
-      if (!nome) return falha('Informe para quem o livro foi emprestado.');
-      if (nome.length > 80) return falha('O nome deve ter até 80 caracteres.');
-      if (livro.situacao === SITUACOES.EMPRESTADO) return falha('Este livro já está emprestado.');
-      Object.assign(livro, { situacao: SITUACOES.EMPRESTADO, emprestadoPara: nome, dataEmprestimo: hoje.toISOString().slice(0, 10) });
+      const resultado = emprestarLivro(livro, pessoa, hoje);
+      if (!resultado.ok) return resultado;
       salvar(livros);
-      return { ok: true, livro };
+      return resultado;
     },
     devolver(id) {
       const livros = carregar();
       const livro = livros.find((l) => l.id === id);
       if (!livro) return falha('Livro não encontrado.');
-      if (livro.situacao !== SITUACOES.EMPRESTADO) return falha('Este livro não está emprestado.');
-      Object.assign(livro, { situacao: SITUACOES.DISPONIVEL, emprestadoPara: null, dataEmprestimo: null });
+      const resultado = devolverLivro(livro);
+      if (!resultado.ok) return resultado;
       salvar(livros);
-      return { ok: true, livro };
+      return resultado;
     },
   };
 }
