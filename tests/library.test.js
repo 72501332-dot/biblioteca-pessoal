@@ -121,3 +121,253 @@ describe('recuperação de armazenamento', () => {
     assert.equal(s.getItem('biblioteca:livros'), original);
   });
 });
+
+describe('cadastro — limites e repetição', () => {
+  test('aceita os tamanhos máximos dos campos e os anos nos extremos válidos', () => {
+    const a = criarAcervo(memoria());
+    const atual = new Date().getFullYear();
+
+    for (const ano of [1000, atual + 1]) {
+      const resultado = a.adicionar({
+        titulo: 'T'.repeat(120),
+        autor: 'A'.repeat(80),
+        categoria: 'C'.repeat(40),
+        ano: String(ano),
+      });
+
+      assert.equal(resultado.ok, true);
+      assert.equal(resultado.livro.titulo.length, 120);
+      assert.equal(resultado.livro.autor.length, 80);
+      assert.equal(resultado.livro.categoria.length, 40);
+      assert.equal(resultado.livro.ano, ano);
+    }
+
+    assert.equal(a.listar().length, 2);
+  });
+
+  test('rejeita campos textuais acima do limite sem gravar o livro', () => {
+    const a = criarAcervo(memoria());
+    const entradas = [
+      { ...livro, titulo: 'T'.repeat(121) },
+      { ...livro, autor: 'A'.repeat(81) },
+      { ...livro, categoria: 'C'.repeat(41) },
+    ];
+
+    for (const entrada of entradas) {
+      assert.equal(a.adicionar(entrada).ok, false);
+      assert.equal(a.listar().length, 0);
+    }
+  });
+
+  test('persiste registros distintos ao cadastrar duas vezes o mesmo livro', () => {
+    const a = criarAcervo(memoria());
+    const primeiro = a.adicionar(livro);
+    const segundo = a.adicionar(livro);
+
+    assert.equal(primeiro.ok, true);
+    assert.equal(segundo.ok, true);
+    assert.notEqual(primeiro.livro.id, segundo.livro.id);
+    assert.equal(a.listar().length, 2);
+  });
+});
+
+describe('edição — validação, repetição e isolamento', () => {
+  test('rejeita limites excedidos ou anos fora do intervalo sem alterar o livro original', () => {
+    const a = criarAcervo(memoria());
+    const { livro: original } = a.adicionar(livro);
+    const atual = new Date().getFullYear();
+    const entradasInvalidas = [
+      { ...livro, titulo: 'T'.repeat(121) },
+      { ...livro, autor: 'A'.repeat(81) },
+      { ...livro, categoria: 'C'.repeat(41) },
+      { ...livro, ano: '999' },
+      { ...livro, ano: String(atual + 2) },
+    ];
+
+    for (const entrada of entradasInvalidas) {
+      assert.equal(a.atualizar(original.id, entrada).ok, false);
+      assert.deepEqual(a.obter(original.id), original);
+    }
+  });
+
+  test('aceita os tamanhos máximos dos campos e os anos nos extremos válidos', () => {
+    const a = criarAcervo(memoria());
+    const atual = new Date().getFullYear();
+    const { livro: original } = a.adicionar(livro);
+
+    for (const ano of [1000, atual + 1]) {
+      const resultado = a.atualizar(original.id, {
+        titulo: 'T'.repeat(120),
+        autor: 'A'.repeat(80),
+        categoria: 'C'.repeat(40),
+        ano: String(ano),
+      });
+
+      assert.equal(resultado.ok, true);
+      assert.equal(resultado.livro.titulo.length, 120);
+      assert.equal(resultado.livro.autor.length, 80);
+      assert.equal(resultado.livro.categoria.length, 40);
+      assert.equal(resultado.livro.ano, ano);
+    }
+  });
+
+  test('preserva situação e dados de empréstimo ao editar um livro emprestado', () => {
+    const a = criarAcervo(memoria());
+    const { livro: cadastrado } = a.adicionar(livro);
+    const emprestado = a.emprestar(cadastrado.id, 'Ana', new Date('2024-06-15T12:00:00Z')).livro;
+    const dadosEmprestimo = {
+      situacao: emprestado.situacao,
+      emprestadoPara: emprestado.emprestadoPara,
+      dataEmprestimo: emprestado.dataEmprestimo,
+    };
+
+    const resultado = a.atualizar(cadastrado.id, { ...livro, titulo: 'Esaú e Jacó' });
+
+    assert.equal(resultado.ok, true);
+    assert.deepEqual(
+      {
+        situacao: resultado.livro.situacao,
+        emprestadoPara: resultado.livro.emprestadoPara,
+        dataEmprestimo: resultado.livro.dataEmprestimo,
+      },
+      dadosEmprestimo,
+    );
+  });
+
+  test('atualizar repetidamente o mesmo ID não cria registros nem altera outros livros', () => {
+    const a = criarAcervo(memoria());
+    const { livro: alvo } = a.adicionar(livro);
+    const { livro: outro } = a.adicionar({ ...livro, titulo: 'O Cortiço' });
+    const edicao = { ...livro, titulo: 'Esaú e Jacó' };
+
+    assert.equal(a.atualizar(alvo.id, edicao).ok, true);
+    assert.equal(a.atualizar(alvo.id, edicao).ok, true);
+    assert.equal(a.obter(alvo.id).titulo, 'Esaú e Jacó');
+    assert.deepEqual(a.obter(outro.id), outro);
+    assert.equal(a.listar().length, 2);
+  });
+});
+
+describe('exclusão — repetição e isolamento', () => {
+  test('a segunda exclusão retorna erro e mantém os demais registros', () => {
+    const a = criarAcervo(memoria());
+    const { livro: alvo } = a.adicionar(livro);
+    const { livro: outro } = a.adicionar({ ...livro, titulo: 'O Cortiço' });
+
+    assert.equal(a.remover(alvo.id).ok, true);
+    assert.deepEqual(a.remover(alvo.id), { ok: false, erros: ['Livro não encontrado.'] });
+    assert.deepEqual(a.obter(outro.id), outro);
+    assert.equal(a.listar().length, 1);
+  });
+});
+
+describe('empréstimo — ID e isolamento', () => {
+  test('rejeita ID inexistente sem alterar os registros existentes', () => {
+    const a = criarAcervo(memoria());
+    const { livro: cadastrado } = a.adicionar(livro);
+
+    assert.deepEqual(a.emprestar('inexistente', 'Ana'), { ok: false, erros: ['Livro não encontrado.'] });
+    assert.deepEqual(a.obter(cadastrado.id), cadastrado);
+  });
+
+  test('emprestar um livro não altera os demais registros', () => {
+    const a = criarAcervo(memoria());
+    const { livro: alvo } = a.adicionar(livro);
+    const { livro: outro } = a.adicionar({ ...livro, titulo: 'O Cortiço' });
+
+    assert.equal(a.emprestar(alvo.id, 'Ana').ok, true);
+    assert.deepEqual(a.obter(outro.id), outro);
+  });
+});
+
+describe('devolução — ID, repetição e isolamento', () => {
+  test('rejeita ID inexistente sem alterar os registros existentes', () => {
+    const a = criarAcervo(memoria());
+    const { livro: cadastrado } = a.adicionar(livro);
+
+    assert.deepEqual(a.devolver('inexistente'), { ok: false, erros: ['Livro não encontrado.'] });
+    assert.deepEqual(a.obter(cadastrado.id), cadastrado);
+  });
+
+  test('a segunda devolução retorna erro e não altera os demais registros', () => {
+    const a = criarAcervo(memoria());
+    const { livro: alvo } = a.adicionar(livro);
+    const { livro: outro } = a.adicionar({ ...livro, titulo: 'O Cortiço' });
+    a.emprestar(alvo.id, 'Ana');
+
+    assert.equal(a.devolver(alvo.id).ok, true);
+    assert.deepEqual(a.devolver(alvo.id), { ok: false, erros: ['Este livro não está emprestado.'] });
+    assert.deepEqual(a.obter(outro.id), outro);
+  });
+});
+
+describe('busca — campos e critérios combinados', () => {
+  test('pesquisa por título e categoria sem diferenciar maiúsculas de minúsculas', () => {
+    const a = criarAcervo(memoria());
+    const { livro: domCasmurro } = a.adicionar(livro);
+    const { livro: cortico } = a.adicionar({ ...livro, titulo: 'O Cortiço', categoria: 'Drama' });
+
+    assert.deepEqual(a.listar({ busca: 'DOM CASMURRO' }).map((l) => l.id), [domCasmurro.id]);
+    assert.deepEqual(a.listar({ busca: 'dRaMa' }).map((l) => l.id), [cortico.id]);
+  });
+
+  test('combina busca e situação, retornando apenas registros que atendem aos dois critérios', () => {
+    const a = criarAcervo(memoria());
+    const { livro: emprestado } = a.adicionar(livro);
+    const { livro: disponivel } = a.adicionar({ ...livro, titulo: 'Dom Casmurro — segunda cópia' });
+    a.emprestar(emprestado.id, 'Ana');
+
+    assert.deepEqual(
+      a.listar({ busca: 'dom casmurro', situacao: SITUACOES.EMPRESTADO }).map((l) => l.id),
+      [emprestado.id],
+    );
+    assert.deepEqual(
+      a.listar({ busca: 'dom casmurro', situacao: SITUACOES.DISPONIVEL }).map((l) => l.id),
+      [disponivel.id],
+    );
+  });
+});
+
+describe('persistência — alterações entre instâncias', () => {
+  test('outra instância observa edições e exclusões feitas no mesmo armazenamento', () => {
+    const s = memoria();
+    const escritor = criarAcervo(s);
+    const leitor = criarAcervo(s);
+    const { livro: alvo } = escritor.adicionar(livro);
+    const { livro: outro } = escritor.adicionar({ ...livro, titulo: 'O Cortiço' });
+
+    escritor.atualizar(alvo.id, { ...livro, titulo: 'Esaú e Jacó' });
+    assert.equal(leitor.obter(alvo.id).titulo, 'Esaú e Jacó');
+
+    escritor.remover(outro.id);
+    assert.equal(leitor.obter(outro.id), null);
+    assert.equal(leitor.listar().length, 1);
+  });
+
+  test('outra instância observa os estados de empréstimo e devolução', () => {
+    const s = memoria();
+    const escritor = criarAcervo(s);
+    const leitor = criarAcervo(s);
+    const { livro: cadastrado } = escritor.adicionar(livro);
+
+    escritor.emprestar(cadastrado.id, 'Ana', new Date('2024-06-15T12:00:00Z'));
+    assert.deepEqual(
+      {
+        situacao: leitor.obter(cadastrado.id).situacao,
+        emprestadoPara: leitor.obter(cadastrado.id).emprestadoPara,
+        dataEmprestimo: leitor.obter(cadastrado.id).dataEmprestimo,
+      },
+      { situacao: SITUACOES.EMPRESTADO, emprestadoPara: 'Ana', dataEmprestimo: '2024-06-15' },
+    );
+
+    escritor.devolver(cadastrado.id);
+    assert.deepEqual(
+      {
+        situacao: leitor.obter(cadastrado.id).situacao,
+        emprestadoPara: leitor.obter(cadastrado.id).emprestadoPara,
+        dataEmprestimo: leitor.obter(cadastrado.id).dataEmprestimo,
+      },
+      { situacao: SITUACOES.DISPONIVEL, emprestadoPara: null, dataEmprestimo: null },
+    );
+  });
+});
