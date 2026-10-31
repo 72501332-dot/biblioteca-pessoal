@@ -95,6 +95,7 @@ export function criarAcervo(storage, chave = CHAVE_ACERVO) {
       if (!livro) return falha('Livro não encontrado.');
       const nome = String(pessoa ?? '').trim();
       if (!nome) return falha('Informe para quem o livro foi emprestado.');
+      if (nome.length > 80) return falha('O nome deve ter até 80 caracteres.');
       if (livro.situacao === SITUACOES.EMPRESTADO) return falha('Este livro já está emprestado.');
       Object.assign(livro, { situacao: SITUACOES.EMPRESTADO, emprestadoPara: nome, dataEmprestimo: hoje.toISOString().slice(0, 10) });
       salvar(livros);

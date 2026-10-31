@@ -53,6 +53,21 @@ describe('empréstimo', () => {
     a.emprestar(l.id, 'Ana');
     assert.equal(a.emprestar(l.id, 'Bia').ok, false);
   });
+  test('aceita nome de 80 caracteres e rejeita 81 sem alterar o livro', () => {
+    const a = criarAcervo(memoria());
+    const { livro: l } = a.adicionar(livro);
+
+    const aceito = a.emprestar(l.id, 'A'.repeat(80));
+    assert.equal(aceito.ok, true);
+    assert.equal(aceito.livro.emprestadoPara.length, 80);
+
+    const { livro: disponivel } = a.adicionar({ ...livro, titulo: 'Memórias Póstumas' });
+    const rejeitado = a.emprestar(disponivel.id, 'B'.repeat(81));
+    assert.equal(rejeitado.ok, false);
+    assert.deepEqual(rejeitado.erros, ['O nome deve ter até 80 caracteres.']);
+    assert.equal(a.obter(disponivel.id).situacao, SITUACOES.DISPONIVEL);
+    assert.equal(a.obter(disponivel.id).emprestadoPara, null);
+  });
   test('não devolve livro disponível', () => {
     const a = criarAcervo(memoria());
     const { livro: l } = a.adicionar(livro);
